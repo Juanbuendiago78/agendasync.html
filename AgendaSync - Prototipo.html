@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AgendaSync</title>
+<style>
+:root{--bg:#f4f7f5;--card:#fff;--tx:#1b2a22;--mut:#5d6b63;--pri:#1f5c3a;--onpri:#fff;--bd:#d3dcd6;--pe:#9a6200;--pebg:#fdf1d6;--co:#1b6e3f;--cobg:#dcf2e4;--ca:#a82b25;--cabg:#fbe1df;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111a15;--card:#1a251f;--tx:#e6efe9;--mut:#9fb0a5;--pri:#58b985;--onpri:#0d1a12;--bd:#2e3d34;--pe:#f0b94d;--pebg:#3a2e12;--co:#6fd49a;--cobg:#173a27;--ca:#f08a84;--cabg:#40201e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111a15;--card:#1a251f;--tx:#e6efe9;--mut:#9fb0a5;--pri:#58b985;--onpri:#0d1a12;--bd:#2e3d34;--pe:#f0b94d;--pebg:#3a2e12;--co:#6fd49a;--cobg:#173a27;--ca:#f08a84;--cabg:#40201e;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 Arial,Helvetica,sans-serif}
+header{background:var(--pri);color:var(--onpri);padding:12px 16px}
+header h1{margin:0;font-size:20px}header small{opacity:.85}
+nav{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--bd)}
+nav button{white-space:nowrap;border:1px solid var(--bd);background:transparent;color:var(--tx);padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit}
+nav button.on{background:var(--pri);color:var(--onpri);border-color:var(--pri)}
+main{max-width:860px;margin:0 auto;padding:16px}
+h2{margin:6px 0 4px}h3{margin:0 0 8px}
+.mut{color:var(--mut)}
+.panel{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin:12px 0}
+label{display:block;margin:8px 0;font-weight:bold;font-size:13px}
+input,select{display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+label.chk{display:flex;gap:8px;align-items:flex-start;font-weight:normal}label.chk input{width:auto;margin:3px 0 0}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>label{flex:1;min-width:130px}
+button{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer}
+button.pri{background:var(--pri);color:var(--onpri);border-color:var(--pri);font-weight:bold}
+button.dg{color:var(--ca);border-color:var(--ca)}
+.card{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-left:6px solid var(--bd);border-radius:10px;padding:10px 12px;margin:8px 0}
+.card .t{font-size:18px;font-weight:bold;min-width:56px}.card .g{flex:1;min-width:140px}.act{display:flex;gap:6px;flex-wrap:wrap}
+.card.Pendiente{border-left-color:var(--pe)}.card.Completada{border-left-color:var(--co)}.card.Cancelada{border-left-color:var(--ca)}
+.b{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:bold}
+.b.Pendiente{background:var(--pebg);color:var(--pe)}.b.Completada{background:var(--cobg);color:var(--co)}.b.Cancelada{background:var(--cabg);color:var(--ca)}
+.sum{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px;border-bottom:1px solid var(--bd)}
+.scroll{overflow-x:auto}
+.days{display:flex;gap:10px;flex-wrap:wrap}.days label{display:flex;gap:4px;align-items:center;font-weight:normal}.days input{width:auto;margin:0}
+.ok-box{border:2px solid var(--co);background:var(--cobg);border-radius:10px;padding:12px;margin:12px 0}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:10px 16px;border-radius:10px;color:#fff;font-weight:bold;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92%;text-align:center}
+#toast.show{opacity:1}#toast.ok{background:#1b6e3f}#toast.er{background:#a82b25}
+footer{text-align:center;color:var(--mut);font-size:12px;padding:16px}
+</style>
+</head>
+<body>
+<header><h1>AgendaSync</h1><small>Sistema de Agendamiento y Control de Citas</small></header>
+<nav id="nav"></nav>
+<main id="main"></main>
+<footer>Prototipo académico de la interfaz. Los datos son de ejemplo y se guardan solo en este navegador.<br><button onclick="resetAll()">Restablecer datos de ejemplo</button></footer>
+<div id="toast" role="status"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const z=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());
+const fd=d=>d?d.split('-').reverse().join('/'):'';
+const TODAY=iso(new Date());
+const KEY='agendasync-proto-v1';
+const DIAS=[['Lun',1],['Mar',2],['Mié',3],['Jue',4],['Vie',5],['Sáb',6],['Dom',0]];
+let db,view='inicio',ui={edit:null,cEdit:null,sEdit:null,f:{},res:null,flt:{},q:''};
+function seed(){return{clients:[{id:1,nombre:'María Fernanda Rojas',doc:'1000000001',tel:'3000000001',mail:'maria.prueba@correo.com'},{id:2,nombre:'Carlos Andrés Pérez',doc:'1000000002',tel:'3000000002',mail:'carlos.prueba@correo.com'}],services:[{id:1,nombre:'Consulta general',min:30,precio:60000},{id:2,nombre:'Control de seguimiento',min:20,precio:40000}],appts:[{id:1,cid:1,sid:1,date:TODAY,time:'08:00',st:'Pendiente'},{id:2,cid:2,sid:2,date:TODAY,time:'09:00',st:'Completada'},{id:3,cid:1,sid:1,date:TODAY,time:'10:00',st:'Cancelada'}],cfg:{days:[1,2,3,4,5],start:'08:00',end:'17:00',dur:30,blocked:[]},log:[],n:{c:3,s:3,a:4}}}
+try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){db=null}
+if(!db||!db.clients)db=seed();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+function resetAll(){db=seed();ui={edit:null,cEdit:null,sEdit:null,f:{},res:null,flt:{},q:''};save();go('inicio');toast('Datos de ejemplo restablecidos.')}
+function toast(m,ok=true){const t=$('#toast');t.textContent=m;t.className=(ok?'ok':'er')+' show';clearTimeout(toast.h);toast.h=setTimeout(()=>{t.className=''},3800)}
+const lg=m=>{db.log.unshift({t:new Date().toLocaleString('es-CO'),m});save()};
+const C=id=>db.clients.find(x=>x.id==id)||{};
+const S=id=>db.services.find(x=>x.id==id)||{};
+const mins=t=>{const p=t.split(':');return +p[0]*60+ +p[1]};
+const hhmm=m=>z(Math.floor(m/60))+':'+z(m%60);
+const badge=s=>`<span class="b ${s}">${s}</span>`;
+function slots(date){const d=new Date(date+'T00:00:00'),c=db.cfg;if(!c.days.includes(d.getDay())||c.blocked.includes(date))return[];const r=[];for(let m=mins(c.start);m+c.dur<=mins(c.end);m+=c.dur)r.push(hhmm(m));return r}
+const taken=(date,time,ig)=>db.appts.some(a=>a.date===date&&a.time===time&&a.st!=='Cancelada'&&a.id!==ig);
+
+function vInicio(){
+ const l=db.appts.filter(a=>a.date===TODAY).sort((a,b)=>a.time.localeCompare(b.time));
+ const n=s=>l.filter(a=>a.st===s).length;
+ return `<h2>Citas de hoy</h2><p class="mut">${new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+ <div class="sum">${['Pendiente','Completada','Cancelada'].map(s=>`<span class="b ${s}">${s}s: ${n(s)}</span>`).join('').replace('Pendientes','Pendientes').replace('Completadas','Completadas')}</div>
+ ${l.length?l.map(a=>`<div class="card ${a.st}"><div class="t">${a.time}</div><div class="g"><b>${esc(C(a.cid).nombre)}</b><br><span class="mut">${esc(S(a.sid).nombre)}</span></div>${badge(a.st)}<div class="act">${a.st==='Pendiente'?`<button onclick="setSt(${a.id},'Completada')">Completar</button><button onclick="reprog(${a.id})">Reprogramar</button><button class="dg" onclick="setSt(${a.id},'Cancelada')">Cancelar</button>`:''}</div></div>`).join(''):'<p class="mut">No hay citas programadas para hoy.</p>'}`}
+function setSt(id,st){const a=db.appts.find(x=>x.id===id);a.st=st;lg(`Cita de ${C(a.cid).nombre} (${fd(a.date)} ${a.time}) cambió a ${st}`);save();toast(st==='Cancelada'?'Cita cancelada. El horario quedó libre.':'Estado actualizado.');render()}
+function reprog(id){const a=db.appts.find(x=>x.id===id);ui.edit=id;ui.res=null;ui.f={cid:a.cid,sid:a.sid,date:a.date,time:a.time};go('agendar')}
+
+function vAgendar(){
+ const f=ui.f,e=ui.edit,sl=f.date?slots(f.date):[];
+ const opts=(arr,k,fn)=>arr.map(x=>`<option value="${x.id}" ${f[k]==x.id?'selected':''}>${esc(fn(x))}</option>`).join('');
+ const r=ui.res?db.appts.find(a=>a.id===ui.res):null;
+ return `<h2>${e?'Reprogramar cita':'Agendar cita'}</h2><div class="panel">
+ <label>Cliente<select ${e?'disabled':''} onchange="ui.f.cid=this.value"><option value="">Seleccione…</option>${opts(db.clients,'cid',c=>c.nombre+' · '+c.doc)}</select></label>
+ <label>Servicio<select ${e?'disabled':''} onchange="ui.f.sid=this.value"><option value="">Seleccione…</option>${opts(db.services,'sid',s=>s.nombre+' ('+s.min+' min)')}</select></label>
+ <div class="row"><label>Fecha<input type="date" min="${TODAY}" value="${f.date||''}" onchange="ui.f.date=this.value;ui.f.time='';render()"></label>
+ <label>Hora<select onchange="ui.f.time=this.value"><option value="">${f.date?(sl.length?'Seleccione…':'Día sin atención'):'Elija primero la fecha'}</option>${sl.map(t=>`<option value="${t}" ${f.time===t?'selected':''}>${t}${taken(f.date,t,e)?' · ocupado':''}</option>`).join('')}</select></label></div>
+ <button class="pri" onclick="saveAppt()">Confirmar</button> ${e?'<button onclick="ui.edit=null;ui.f={};go(\'inicio\')">Volver</button>':''}</div>
+ ${r?`<div class="ok-box"><h3>Resumen de la cita</h3><b>Cliente:</b> ${esc(C(r.cid).nombre)}<br><b>Servicio:</b> ${esc(S(r.sid).nombre)}<br><b>Fecha:</b> ${fd(r.date)}<br><b>Hora:</b> ${r.time}<br><b>Estado:</b> ${badge(r.st)}</div>`:''}`}
+function saveAppt(){
+ const f=ui.f;
+ if(!f.cid||!f.sid||!f.date||!f.time)return toast('Complete cliente, servicio, fecha y hora.',false);
+ if(taken(f.date,f.time,ui.edit))return toast('Ese horario ya está ocupado. Elija otra hora.',false);
+ let a;
+ if(ui.edit){a=db.appts.find(x=>x.id===ui.edit);a.date=f.date;a.time=f.time;lg(`Cita de ${C(a.cid).nombre} reprogramada para ${fd(a.date)} ${a.time}`)}
+ else{a={id:db.n.a++,cid:+f.cid,sid:+f.sid,date:f.date,time:f.time,st:'Pendiente'};db.appts.push(a);lg(`Cita creada para ${C(a.cid).nombre}: ${fd(a.date)} ${a.time}`)}
+ ui.res=a.id;ui.edit=null;ui.f={};save();toast('Cita guardada correctamente.');render()}
+
+function vClientes(){
+ const e=ui.cEdit?C(ui.cEdit):{},q=ui.q.trim(),l=db.clients.filter(c=>!q||c.doc.includes(q));
+ return `<h2>Clientes</h2><div class="panel"><h3>${ui.cEdit?'Editar cliente':'Nuevo cliente'}</h3>
+ <label>Nombre completo<input id="cn" value="${esc(e.nombre)}"></label>
+ <div class="row"><label>Documento de identidad<input id="cd" inputmode="numeric" value="${esc(e.doc)}"></label><label>Teléfono<input id="ct" inputmode="tel" value="${esc(e.tel)}"></label></div>
+ <label>Correo electrónico<input id="cm" type="email" value="${esc(e.mail)}"></label>
+ ${ui.cEdit?'':'<label class="chk"><input type="checkbox" id="cp"> Autorizo el tratamiento de mis datos personales (Ley 1581 de 2012).</label>'}
+ <button class="pri" onclick="saveC()">Guardar</button> ${ui.cEdit?'<button onclick="ui.cEdit=null;render()">Cancelar</button>':''}</div>
+ <div class="panel"><h3>Buscar por cédula</h3><div class="row"><input id="cq" style="flex:1" placeholder="Número de documento" value="${esc(ui.q)}"><button onclick="ui.q=$('#cq').value;render()">Buscar</button></div>
+ <div class="scroll"><table><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th></th></tr>${l.map(c=>`<tr><td>${esc(c.nombre)}</td><td>${esc(c.doc)}</td><td>${esc(c.tel)}</td><td><button onclick="ui.cEdit=${c.id};render();scrollTo(0,0)">Editar</button></td></tr>`).join('')||'<tr><td colspan="4" class="mut">No se encontró ningún cliente.</td></tr>'}</table></div></div>`}
+function saveC(){
+ const v=id=>$(id).value.trim(),n=v('#cn'),d=v('#cd'),t=v('#ct'),m=v('#cm');
+ if(!n||!d||!t||!m)return toast('Complete todos los campos obligatorios.',false);
+ if(!/^\d{5,12}$/.test(d))return toast('El documento debe tener solo números (5 a 12 dígitos).',false);
+ if(db.clients.some(c=>c.doc===d&&c.id!==ui.cEdit))return toast('Ya existe un cliente con ese documento.',false);
+ if(!ui.cEdit&&!$('#cp').checked)return toast('Debe aceptar la política de tratamiento de datos.',false);
+ if(ui.cEdit){Object.assign(C(ui.cEdit),{nombre:n,doc:d,tel:t,mail:m});lg('Datos del cliente '+n+' actualizados')}
+ else{db.clients.push({id:db.n.c++,nombre:n,doc:d,tel:t,mail:m});lg('Cliente registrado: '+n)}
+ ui.cEdit=null;save();toast('Cliente guardado correctamente.');render()}
+
+function vServ(){
+ const e=ui.sEdit?S(ui.sEdit):{};
+ return `<h2>Servicios</h2><div class="panel"><h3>${ui.sEdit?'Editar servicio':'Nuevo servicio'}</h3>
+ <label>Nombre del servicio<input id="sn" value="${esc(e.nombre)}"></label>
+ <div class="row"><label>Duración (minutos)<input id="sm" type="number" min="5" value="${esc(e.min)}"></label><label>Precio (COP)<input id="sp" type="number" min="0" value="${esc(e.precio)}"></label></div>
+ <button class="pri" onclick="saveS()">Guardar</button> ${ui.sEdit?'<button onclick="ui.sEdit=null;render()">Cancelar</button>':''}</div>
+ <div class="panel scroll"><table><tr><th>Servicio</th><th>Duración</th><th>Precio</th><th></th></tr>${db.services.map(s=>`<tr><td>${esc(s.nombre)}</td><td>${s.min} min</td><td>$${Number(s.precio).toLocaleString('es-CO')}</td><td><button onclick="ui.sEdit=${s.id};render()">Editar</button></td></tr>`).join('')}</table></div>`}
+function saveS(){
+ const n=$('#sn').value.trim(),m=+$('#sm').value,p=+$('#sp').value;
+ if(!n||!m||$('#sp').value==='')return toast('Complete nombre, duración y precio.',false);
+ if(ui.sEdit)Object.assign(S(ui.sEdit),{nombre:n,min:m,precio:p});else db.services.push({id:db.n.s++,nombre:n,min:m,precio:p});
+ lg('Servicio guardado: '+n);ui.sEdit=null;save();toast('Servicio guardado correctamente.');render()}
+
+function vHor(){
+ const c=db.cfg;
+ return `<h2>Horarios</h2><div class="panel"><h3>Días y turnos de atención</h3>
+ <div class="days">${DIAS.map(d=>`<label><input type="checkbox" class="dy" value="${d[1]}" ${c.days.includes(d[1])?'checked':''}> ${d[0]}</label>`).join('')}</div>
+ <div class="row"><label>Hora de inicio<input id="h1" type="time" value="${c.start}"></label><label>Hora de cierre<input id="h2" type="time" value="${c.end}"></label><label>Duración del turno (min)<input id="h3" type="number" min="5" value="${c.dur}"></label></div>
+ <button class="pri" onclick="saveH()">Guardar horarios</button></div>
+ <div class="panel"><h3>Bloquear una fecha</h3><div class="row"><input id="hb" type="date" min="${TODAY}" style="flex:1"><button onclick="blockD()">Bloquear</button></div>
+ ${c.blocked.length?'<p>'+c.blocked.map(b=>`<span class="b Cancelada">${fd(b)} <a href="#" onclick="unblock('${b}');return false">quitar</a></span> `).join('')+'</p>':'<p class="mut">No hay fechas bloqueadas.</p>'}</div>`}
+function saveH(){
+ const d=[...document.querySelectorAll('.dy:checked')].map(x=>+x.value),a=$('#h1').value,b=$('#h2').value,u=+$('#h3').value;
+ if(!d.length||!a||!b||!u)return toast('Elija al menos un día y complete las horas y la duración.',false);
+ if(mins(a)>=mins(b))return toast('La hora de cierre debe ser posterior a la de inicio.',false);
+ db.cfg.days=d;db.cfg.start=a;db.cfg.end=b;db.cfg.dur=u;lg('Horarios de atención actualizados');save();toast('Horarios guardados correctamente.');render()}
+function blockD(){const v=$('#hb').value;if(!v)return toast('Elija la fecha que desea bloquear.',false);if(!db.cfg.blocked.includes(v))db.cfg.blocked.push(v);lg('Fecha bloqueada: '+fd(v));save();toast('Fecha bloqueada. Las citas ya atendidas no se borran.');render()}
+function unblock(v){db.cfg.blocked=db.cfg.blocked.filter(x=>x!==v);lg('Fecha desbloqueada: '+fd(v));save();render()}
+
+function vHist(){
+ const f=ui.flt;
+ const l=db.appts.filter(a=>(!f.d1||a.date>=f.d1)&&(!f.d2||a.date<=f.d2)&&(!f.doc||(C(a.cid).doc||'').includes(f.doc))&&(!f.st||a.st===f.st)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+ return `<h2>Agenda / Historial</h2><div class="panel"><h3>Filtros</h3><div class="row"><label>Desde<input id="f1" type="date" value="${f.d1||''}"></label><label>Hasta<input id="f2" type="date" value="${f.d2||''}"></label><label>Documento<input id="f3" value="${esc(f.doc||'')}"></label>
+ <label>Estado<select id="f4"><option value="">Todos</option>${['Pendiente','Completada','Cancelada'].map(s=>`<option ${f.st===s?'selected':''}>${s}</option>`).join('')}</select></label></div>
+ <button class="pri" onclick="ui.flt={d1:$('#f1').value,d2:$('#f2').value,doc:$('#f3').value.trim(),st:$('#f4').value};render()">Filtrar</button> <button onclick="ui.flt={};render()">Limpiar</button></div>
+ <div class="panel scroll"><table><tr><th>Fecha</th><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Estado</th></tr>${l.map(a=>`<tr><td>${fd(a.date)}</td><td>${a.time}</td><td>${esc(C(a.cid).nombre)}</td><td>${esc(S(a.sid).nombre)}</td><td>${badge(a.st)}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">No hay citas con esos filtros.</td></tr>'}</table></div>
+ <div class="panel"><h3>Historial de cambios</h3>${db.log.length?db.log.slice(0,15).map(x=>`<div><span class="mut">${esc(x.t)}</span> · ${esc(x.m)}</div>`).join(''):'<p class="mut">Aún no hay cambios registrados.</p>'}</div>`}
+
+const V={inicio:vInicio,clientes:vClientes,servicios:vServ,horarios:vHor,agendar:vAgendar,historial:vHist};
+const NAV=[['inicio','Inicio'],['clientes','Clientes'],['servicios','Servicios'],['horarios','Horarios'],['agendar','Agendar cita'],['historial','Agenda / Historial']];
+$('#nav').innerHTML=NAV.map(n=>`<button data-v="${n[0]}" onclick="nav('${n[0]}')">${n[1]}</button>`).join('');
+function nav(v){ui.edit=null;ui.cEdit=null;ui.sEdit=null;ui.f={};go(v)}
+function go(v){view=v;if(v!=='agendar')ui.res=null;render()}
+function render(){$('#main').innerHTML=V[view]();document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view))}
+render();
+</script>
+</body>
+</html>
